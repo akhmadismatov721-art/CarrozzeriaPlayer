@@ -1,151 +1,96 @@
 import SwiftUI
 import AVFoundation
 
-// MARK: - Audio Player Controller
-class CarrozzeriaPlayer: ObservableObject {
-    private var audioEngine = AVAudioEngine()
-    private var playerNode = AVAudioPlayerNode()
-    private var reverbNode = AVAudioUnitReverb()
-    private var eqNode = AVAudioUnitEQ(numberOfBands: 2)
-    
-    @Published var isPlaying = false
-    @Published var isCarrozzeriaActive = false
-    @Published var trackTitle = "Musiqa tanlanmagan"
+struct ContentView: View {
+    @State private var isPlaying = false
+    @State private var isCarrozzeriaOn = false
+    @State private var volume: Double = 0.7
 
-    init() {
-        setupAudioEngine()
-    }
+    var body: some View {
+        ZStack {
+            // To'q qora / Yandex Music uslubidagi fon
+            Color.black.ignoresSafeArea()
 
-    private func setupAudioEngine() {
-        // Dvigatelga tugunlarni (node) ulash
-        audioEngine.attach(playerNode)
-        audioEngine.attach(reverbNode)
-        audioEngine.attach(eqNode)
+            VBoxLayout(spacing: 25) {
+                // Sarlavha
+                Text("CARROZZERIA PLAYER")
+                .font(.system(size: 18, weight: .bold))
+                .tracking(2)
+                .foregroundColor(.white)
 
-        // Carrozzeria (Konsert zali) Reverb sozlamasi
-        reverbNode.loadFactoryPreset(.cathedral) // Yoki .largeHall
-        reverbNode.wetDryMix = 0 // Boshida effekt o'chirilgan (0%)
+                // Albom muqovasi (Simulyatsiya)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(LinearGradient(colors: [.gray.opacity(0.3), .purple.opacity(0.4)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .frame(width: 250, height: 250)
+                    
+                    Image(systemName: "music.note")
+                        .font(.system(size: 80))
+                        .foregroundColor(.white.opacity(0.8))
+                }
+                .shadow(color: .purple.opacity(0.3), radius: 15, x: 0, y: 10)
 
-        // EQ (Bass va treble akustikasi) sozlamasi
-        let bassBand = eqNode.bands[0]
-        bassBand.filterType = .lowShelf
-        bassBand.frequency = 100
-        bassBand.gain = 4.0 // 4dB bass kuchaytirish
+                // Track nomi
+                VStack(spacing: 5) {
+                    Text("Konsert Zali Trangi")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                    Text("iPhone 13 Pro Max Audio")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                }
 
-        // Zanjirni ulash: Player -> Reverb -> EQ -> MainOutput
-        let format = audioEngine.mainMixerNode.outputFormat(forBus: 0)
-        audioEngine.connect(playerNode, to: reverbNode, format: format)
-        audioEngine.connect(reverbNode, to: eqNode, format: format)
-        audioEngine.connect(eqNode, to: audioEngine.mainMixerNode, format: format)
-    }
+                // Carrozzeria Reverb tugmasi
+                Button(action: {
+                    isCarrozzeriaOn.toggle()
+                }) {
+                    HStack {
+                        Image(systemName: isCarrozzeriaOn ? "speaker.wave.3.fill" : "speaker.slash.fill")
+                        Text(isCarrozzeriaOn ? "Carrozzeria: YOQILGAN (Reverb Active)" : "Carrozzeria: O'CHIRILGAN")
+                            .fontWeight(.medium)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(isCarrozzeriaOn ? Color.purple : Color.gray.opacity(0.3))
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+                }
+                .padding(.horizontal, 20)
 
-    func loadAudio(url: URL) {
-        do {
-            let file = try AVAudioFile(forReading: url)
-            playerNode.stop()
-            playerNode.scheduleFile(file, at: nil, completionHandler: nil)
-            
-            if !audioEngine.isRunning {
-                try audioEngine.start()
+                // Boshqaruv tugmalari (Play/Pause)
+                HStack(spacing: 40) {
+                    Button(action: {}) {
+                        Image(systemName: "backward.fill")
+                            .font(.title)
+                            .foregroundColor(.white)
+                    }
+
+                    Button(action: {
+                        isPlaying.toggle()
+                    }) {
+                        Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                            .font(.system(size: 64))
+                            .foregroundColor(.white)
+                    }
+
+                    Button(action: {}) {
+                        Image(systemName: "forward.fill")
+                            .font(.title)
+                            .foregroundColor(.white)
+                    }
+                }
+                .padding(.top, 10)
+
+                Spacer()
             }
-            trackTitle = url.lastPathComponent
-        } catch {
-            print("Audio faylni yuklashda xatolik: \(error)")
-        }
-    }
-
-    func togglePlayPause() {
-        if isPlaying {
-            playerNode.pause()
-        } else {
-            playerNode.play()
-        }
-        isPlaying.toggle()
-    }
-
-    // TOGGLE: CARROZZERIA / KONSERT ZALI REJIMINI YOQISH-O'CHIRISH
-    func toggleCarrozzeria() {
-        isCarrozzeriaActive.toggle()
-        
-        // Animatsiya bilan Reverb va EQ qiymatlarini o'zgartirish
-        if isCarrozzeriaActive {
-            reverbNode.wetDryMix = 45 // 45% Konsert aks sadosi
-        } else {
-            reverbNode.wetDryMix = 0  // Oddiy steril ovoz
+            .padding()
         }
     }
 }
 
-// MARK: - SwiftUI User Interface (Interfeys)
-struct ContentView: View {
-    @StateObject private var player = CarrozzeriaPlayer()
-    @State private var showFilePicker = false
-
-    var body: some View {
-        VStack(spacing: 30) {
-            Spacer()
-
-            // Albom muqovasi va musiqa nomi
-            ZStack {
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(player.isCarrozzeriaActive ? Color.purple.opacity(0.3) : Color.gray.opacity(0.2))
-                    .frame(width: 250, height: 250)
-                
-                Image(systemName: "music.note.house.fill")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 100)
-                    .foregroundColor(player.isCarrozzeriaActive ? .purple : .gray)
-            }
-
-            Text(player.trackTitle)
-                .font(.headline)
-                .lineLimit(1)
-                .padding(.horizontal)
-
-            // --- CARROZZERIA (KONSERT ZALI) TUGMASI ---
-            Button(action: {
-                withAnimation {
-                    player.toggleCarrozzeria()
-                }
-            }) {
-                HStack {
-                    Image(systemName: player.isCarrozzeriaActive ? "speaker.wave.3.fill" : "speaker.wave.1")
-                    Text(player.isCarrozzeriaActive ? "CARROZZERIA: YOQILGAN" : "CARROZZERIA: O'CHIRILGAN")
-                        .bold()
-                }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(player.isCarrozzeriaActive ? LinearGradient(colors: [.purple, .blue], startPoint: .leading, endPoint: .trailing) : LinearGradient(colors: [.gray], startPoint: .leading, endPoint: .trailing))
-                .foregroundColor(.white)
-                .cornerRadius(15)
-                .shadow(radius: player.isCarrozzeriaActive ? 10 : 0)
-            }
-            .padding(.horizontal, 40)
-
-            // Pleyer boshqaruv tugmalari
-            HStack(spacing: 40) {
-                Button(action: { showFilePicker = true }) {
-                    Image(systemName: "folder.badge.plus")
-                        .font(.title)
-                }
-
-                Button(action: { player.togglePlayPause() }) {
-                    Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.system(size: 64))
-                        .foregroundColor(.blue)
-                }
-            }
-
-            Spacer()
-        }
-        .fileImporter(isPresented: $showFilePicker, allowedContentTypes: [.audio]) { result in
-            switch result {
-            case .success(let url):
-                player.loadAudio(url: url)
-            case .failure(let error):
-                print("Fayl tanlashda xato: \(error)")
-            }
-        }
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
     }
 }
