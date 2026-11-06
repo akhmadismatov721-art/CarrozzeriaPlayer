@@ -1,159 +1,125 @@
 import SwiftUI
 import AVFoundation
-import UniformTypeIdentifiers
+
+struct Song: Codable, Identifiable {
+    var id: Int { trackId }
+    let trackId: Int
+    let trackName: String
+    let artistName: String
+    let previewUrl: String
+    let artworkUrl100: String
+}
 
 struct ContentView: View {
-    @State private var isPlaying = false
-    @State private var isCarrozzeriaOn = false
-    @State private var isCarModeOn = false
-    @State private var isImporterPresented = false
-    @State private var selectedAudioURL: URL?
+    @State private var searchQuery = ""
+    @State private var songs: [Song] = []
     @State private var player: AVPlayer?
+    @State private var isPlaying = false
+    @State private var selectedSong: Song?
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: isCarrozzeriaOn ? [.black, .purple.opacity(0.6), .black] : [.black, .gray.opacity(0.3), .black],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            Color.black.ignoresSafeArea()
 
             VStack(spacing: 20) {
+                // Qidiruv paneli
                 HStack {
-                    Text("CARROZZERIA PLAYER")
-                        .font(.system(size: 16, weight: .bold))
-                        .tracking(2)
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.gray)
+                    TextField("Musiqa yoki ijrochi nomi...", text: $searchQuery)
+                        .textFieldStyle(PlainTextFieldStyle())
                         .foregroundColor(.white)
-                    
-                    Spacer()
-                    
-                    // Telefon xotirasidan musiqa tanlash tugmasi
-                    Button(action: {
-                        isImporterPresented.toggle()
-                    }) {
-                        Image(systemName: "folder.badge.plus")
-                            .font(.title2)
-                            .foregroundColor(.white)
-                    }
-                    
-                    Button(action: {
-                        isCarModeOn.toggle()
-                    }) {
-                        Image(systemName: isCarModeOn ? "car.fill" : "car")
-                            .font(.title2)
-                            .foregroundColor(isCarModeOn ? .purple : .white)
-                    }
+                        .onSubmit {
+                            searchMusic(query: searchQuery)
+                        }
                 }
+                .padding()
+                .background(Color.gray.opacity(0.2))
+                .cornerRadius(12)
                 .padding(.horizontal)
 
-                Spacer()
-
-                ZStack {
-                    RoundedRectangle(cornerRadius: 25)
-                        .fill(LinearGradient(colors: [.purple.opacity(0.5), .blue.opacity(0.3)], startPoint: .top, endPoint: .bottom))
-                        .frame(width: isCarModeOn ? 280 : 220, height: isCarModeOn ? 280 : 220)
-                        .shadow(color: .purple.opacity(0.4), radius: 20, x: 0, y: 10)
-                    
-                    VStack {
-                        Image(systemName: "music.note.list")
-                            .font(.system(size: 60))
-                            .foregroundColor(.white)
-                        
-                        HStack(spacing: 4) {
-                            ForEach(0..<5, id: \.self) { index in
-                                RoundedRectangle(cornerRadius: 2)
-                                    .fill(Color.white)
-                                    .frame(width: 4, height: isPlaying ? CGFloat.random(in: 15...45) : 10)
-                                    .animation(isPlaying ? .easeInOut(duration: 0.3).repeatForever(autoreverses: true).delay(Double(index) * 0.1) : .default, value: isPlaying)
-                            }
-                        }
-                        .padding(.top, 10)
-                    }
-                }
-
-                VStack(spacing: 5) {
-                    Text(selectedAudioURL?.lastPathComponent ?? "Carrozzeria Hi-Fi Mix")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                    Text(isCarModeOn ? "Avtomobil rejimi Faol" : "iPhone xotirasidan")
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
-                }
-
-                Button(action: {
-                    isCarrozzeriaOn.toggle()
-                }) {
+                // Topilgan musiqalar ro'yxati
+                List(songs) { song in
                     HStack {
-                        Image(systemName: isCarrozzeriaOn ? "speaker.wave.3.fill" : "speaker.slash.fill")
-                        Text(isCarrozzeriaOn ? "Akustika: Carrozzeria YOQILGAN" : "Akustika: Standart")
-                            .fontWeight(.medium)
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(isCarrozzeriaOn ? Color.purple : Color.gray.opacity(0.3))
-                    .foregroundColor(.white)
-                    .cornerRadius(14)
-                }
-                .padding(.horizontal, 20)
-
-                HStack(spacing: isCarModeOn ? 50 : 40) {
-                    Button(action: {}) {
-                        Image(systemName: "backward.fill")
-                            .font(isCarModeOn ? .largeTitle : .title)
-                            .foregroundColor(.white)
-                    }
-
-                    // Play / Pause tugmasi
-                    Button(action: {
-                        isPlaying.toggle()
-                        if let player = player {
-                            if isPlaying {
-                                player.play()
-                            } else {
-                                player.pause()
-                            }
+                        AsyncImage(url: URL(string: song.artworkUrl100)) { image in
+                            image.resizable()
+                        } placeholder: {
+                            Color.gray
                         }
-                    }) {
-                        Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                            .font(.system(size: isCarModeOn ? 80 : 64))
-                            .foregroundColor(.white)
-                    }
+                        .frame(width: 50, height: 50)
+                        .cornerRadius(8)
 
-                    Button(action: {}) {
-                        Image(systemName: "forward.fill")
-                            .font(isCarModeOn ? .largeTitle : .title)
-                            .foregroundColor(.white)
+                        VStack(alignment: .leading) {
+                            Text(song.trackName)
+                                .font(.headline)
+                                .foregroundColor(.white)
+                            Text(song.artistName)
+                                .font(.subheadline)
+                                .foregroundColor(.gray)
+                        }
+
+                        Spacer()
+
+                        Button(action: {
+                            playPreview(song: song)
+                        }) {
+                            Image(systemName: selectedSong?.id == song.id && isPlaying ? "pause.fill" : "play.fill")
+                                .foregroundColor(.purple)
+                                .font(.title2)
+                        }
                     }
+                    .listRowBackground(Color.black)
                 }
-                .padding(.top, 10)
-
-                Spacer()
+                .scrollContentBackground(.hidden)
             }
-            .padding()
         }
-        // Fayl tanlash oynasini chaqiruvchi modifier
-        .fileImporter(
-            isPresented: $isImporterPresented,
-            allowedContentTypes: [.audio],
-            allowsMultipleSelection: false
-        ) { result in
+    }
+
+    // Internetdan musiqa qidirish funksiyasi
+    func searchMusic(query: String) {
+        let formattedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        guard let url = URL(string: "https://itunes.apple.com/search?term=\(formattedQuery)&entity=song&limit=10") else { return }
+
+        URLSession.shared.dataTask(with: url) { data, _, error in
+            guard let data = data, error == nil else { return }
             do {
-                guard let selectedFile = try result.get().first else { return }
-                
-                // Xavfsiz fayl manzilini olish
-                if selectedFile.startAccessingSecurityScopedResource() {
-                    selectedAudioURL = selectedFile
-                    player = AVPlayer(url: selectedFile)
-                    player?.play()
-                    isPlaying = true
-                    selectedFile.stopAccessingSecurityScopedResource()
+                let result = try JSONDecoder().decodeSearchResult(from: data)
+                DispatchQueue.main.async {
+                    self.songs = result.results
                 }
             } catch {
-                print("Musiqa ochishda xatolik: \(error.localizedDescription)")
+                print("Xatolik: \(error)")
             }
+        }.resume()
+    }
+
+    // Musiqani onlayn ijro etish
+    func playPreview(song: Song) {
+        guard let url = URL(string: song.previewUrl) else { return }
+        
+        if selectedSong?.id == song.id {
+            if isPlaying {
+                player?.pause()
+                isPlaying = false
+            } else {
+                player?.play()
+                isPlaying = true
+            }
+        } else {
+            player = AVPlayer(url: url)
+            player?.play()
+            selectedSong = song
+            isPlaying = true
         }
+    }
+}
+
+struct SearchResult: Codable {
+    let results: [Song]
+}
+
+extension JSONDecoder {
+    func decodeSearchResult(from data: Data) throws -> SearchResult {
+        return try self.decode(SearchResult.self, from: data)
     }
 }
