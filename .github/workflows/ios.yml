@@ -1,129 +1,25 @@
-import SwiftUI
-import AVFoundation
+name: Swift Linux Build Check
 
-struct ContentView: View {
-    @State private var isPlaying = false
-    @State private var isCarrozzeriaOn = false
-    @State private var isCarModeOn = false
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
-    var body: some View {
-        ZStack {
-            // Dinamik fon (Carrozzeria rejimi yoqilganda binafsharang tus oladi)
-            LinearGradient(
-                colors: isCarrozzeriaOn ? [.black, .purple.opacity(0.6), .black] : [.black, .gray.opacity(0.3), .black],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-            VStack(spacing: 20) {
-                // Yuqori panel: Car Mode tugmasi
-                HStack {
-                    Text("CARROZZERIA PLAYER")
-                        .font(.system(size: 16, weight: .bold))
-                        .tracking(2)
-                        .foregroundColor(.white)
-                    
-                    Spacer()
-                    
-                    Button(action: {
-                        isCarModeOn.toggle()
-                    }) {
-                        Image(systemName: isCarModeOn ? "car.fill" : "car")
-                            .font(.title2)
-                            .foregroundColor(isCarModeOn ? .purple : .white)
-                    }
-                }
-                .padding(.horizontal)
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Swift on Linux
+      uses: swift-actions/setup-swift@v2
+      with:
+        swift-version: "5.9"
 
-                Spacer()
+    - name: Check Swift Version
+      run: swift --version
 
-                // Albom muqovasi va Ekvalayzer animatsiyasi
-                ZStack {
-                    RoundedRectangle(cornerRadius: 25)
-                        .fill(LinearGradient(colors: [.purple.opacity(0.5), .blue.opacity(0.3)], startPoint: .top, endPoint: .bottom))
-                        .frame(width: isCarModeOn ? 280 : 220, height: isCarModeOn ? 280 : 220)
-                        .shadow(color: .purple.opacity(0.4), radius: 20, x: 0, y: 10)
-                    
-                    VStack {
-                        Image(systemName: "music.note.list")
-                            .font(.system(size: 60))
-                            .foregroundColor(.white)
-                        
-                        // Jonli Ekvalayzer Vizualizatsiyasi
-                        HStack(spacing: 4) {
-                            ForEach(0..<5, id: \.self) { index in
-                                RoundedRectangle(cornerRadius: 2)
-                                    .fill(Color.white)
-                                    .frame(width: 4, height: isPlaying ? CGFloat.random(in: 15...45) : 10)
-                                    .animation(isPlaying ? .easeInOut(duration: 0.3).repeatForever(autoreverses: true).delay(Double(index) * 0.1) : .default, value: isPlaying)
-                            }
-                        }
-                        .padding(.top, 10)
-                    }
-                }
-
-                // Track nomi
-                VStack(spacing: 5) {
-                    Text("Carrozzeria Hi-Fi Mix")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
-                    Text(isCarModeOn ? "Avtomobil rejimi Faol" : "iPhone 13 Pro Max")
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
-                }
-
-                // Carrozzeria Reverb tugmasi
-                Button(action: {
-                    isCarrozzeriaOn.toggle()
-                }) {
-                    HStack {
-                        Image(systemName: isCarrozzeriaOn ? "speaker.wave.3.fill" : "speaker.slash.fill")
-                        Text(isCarrozzeriaOn ? "Akustika: Carrozzeria YOQILGAN" : "Akustika: Standart")
-                            .fontWeight(.medium)
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(isCarrozzeriaOn ? Color.purple : Color.gray.opacity(0.3))
-                    .foregroundColor(.white)
-                    .cornerRadius(14)
-                }
-                .padding(.horizontal, 20)
-
-                // Pleyer Boshqaruv Tugmalari
-                HStack(spacing: isCarModeOn ? 50 : 40) {
-                    Button(action: {}) {
-                        Image(systemName: "backward.fill")
-                            .font(isCarModeOn ? .largeTitle : .title)
-                            .foregroundColor(.white)
-                    }
-
-                    Button(action: {
-                        isPlaying.toggle()
-                    }) {
-                        Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                            .font(.system(size: isCarModeOn ? 80 : 64))
-                            .foregroundColor(.white)
-                    }
-
-                    Button(action: {}) {
-                        Image(systemName: "forward.fill")
-                            .font(isCarModeOn ? .largeTitle : .title)
-                            .foregroundColor(.white)
-                    }
-                }
-                .padding(.top, 10)
-
-                Spacer()
-            }
-            .padding()
-        }
-    }
-}
-
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
-    }
-}
+    - name: Build / Test check
+      run: swift build || swiftc ContentView.swift
