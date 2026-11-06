@@ -20,11 +20,11 @@ struct ContentView: View {
     @State private var isCarrozzeriaOn = false
     @State private var isCarModeOn = false
     
-    // Takrorlash va Shuffle rejimlari uchun o'zgaruvchilar
+    // Takrorlash va Shuffle rejimlari
     @State private var isLoopEnabled = false
     @State private var isShuffleEnabled = false
     
-    // Lokal va internet musiqalari uchun
+    // Lokal va Internet musiqalari
     @State private var isImporterPresented = false
     @State private var selectedAudioURL: URL?
     @State private var searchQuery = ""
@@ -32,6 +32,11 @@ struct ContentView: View {
     @State private var selectedSong: Song?
     
     @State private var player: AVPlayer?
+    
+    // Progress Bar uchun o'zgaruvchilar
+    @State private var playbackProgress: Double = 0.0
+    @State private var trackDuration: Double = 1.0
+    @State private var timeObserverToken: Any?
 
     var body: some View {
         ZStack {
@@ -42,7 +47,7 @@ struct ContentView: View {
             )
             .ignoresSafeArea()
 
-            VStack(spacing: 15) {
+            VStack(spacing: 12) {
                 // Yuqori panel
                 HStack {
                     Text("CARROZZERIA")
@@ -115,7 +120,7 @@ struct ContentView: View {
                         }
                         .listRowBackground(Color.black.opacity(0.5))
                     }
-                    .frame(height: 140)
+                    .frame(height: 120)
                     .scrollContentBackground(.hidden)
                 }
 
@@ -125,23 +130,23 @@ struct ContentView: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: 25)
                         .fill(LinearGradient(colors: [.purple.opacity(0.5), .blue.opacity(0.3)], startPoint: .top, endPoint: .bottom))
-                        .frame(width: isCarModeOn ? 240 : 160, height: isCarModeOn ? 240 : 160)
+                        .frame(width: isCarModeOn ? 220 : 150, height: isCarModeOn ? 220 : 150)
                         .shadow(color: .purple.opacity(0.4), radius: 20, x: 0, y: 10)
                     
                     VStack {
                         Image(systemName: "music.note.list")
-                            .font(.system(size: 45))
+                            .font(.system(size: 40))
                             .foregroundColor(.white)
                         
                         HStack(spacing: 4) {
                             ForEach(0..<5, id: \.self) { index in
                                 RoundedRectangle(cornerRadius: 2)
                                     .fill(Color.white)
-                                    .frame(width: 4, height: isPlaying ? CGFloat.random(in: 12...35) : 8)
+                                    .frame(width: 4, height: isPlaying ? CGFloat.random(in: 10...30) : 6)
                                     .animation(isPlaying ? .easeInOut(duration: 0.3).repeatForever(autoreverses: true).delay(Double(index) * 0.1) : .default, value: isPlaying)
                             }
                         }
-                        .padding(.top, 8)
+                        .padding(.top, 6)
                     }
                 }
 
@@ -155,6 +160,26 @@ struct ContentView: View {
                         .font(.subheadline)
                         .foregroundColor(.gray)
                 }
+
+                // Progress Bar (Slayder va vaqt ko'rsatkichi)
+                VStack(spacing: 4) {
+                    Slider(value: $playbackProgress, in: 0...trackDuration, onEditingChanged: { editing in
+                        if let player = player, !editing {
+                            let targetTime = CMTime(seconds: playbackProgress, preferredTimescale: 600)
+                            player.seek(to: targetTime)
+                        }
+                    })
+                    .accentColor(.purple)
+
+                    HStack {
+                        Text(formatTime(seconds: playbackProgress))
+                        Spacer()
+                        Text(formatTime(seconds: trackDuration))
+                    }
+                    .font(.caption2)
+                    .foregroundColor(.gray)
+                }
+                .padding(.horizontal, 20)
 
                 // Carrozzeria Reverb tugmasi
                 Button(action: { isCarrozzeriaOn.toggle() }) {
@@ -171,9 +196,8 @@ struct ContentView: View {
                 }
                 .padding(.horizontal, 20)
 
-                // Asosiy pleyer boshqaruv tugmalari (Shuffle va Loop qo'shilgan)
+                // Asosiy pleyer boshqaruv tugmalari
                 HStack(spacing: 25) {
-                    // Shuffle tugmasi
                     Button(action: { isShuffleEnabled.toggle() }) {
                         Image(systemName: "shuffle")
                             .font(.title3)
@@ -199,14 +223,13 @@ struct ContentView: View {
                         Image(systemName: "forward.fill").font(.title2).foregroundColor(.white)
                     }
 
-                    // Loop (Takrorlash) tugmasi
                     Button(action: { isLoopEnabled.toggle() }) {
                         Image(systemName: isLoopEnabled ? "repeat.1" : "repeat")
                             .font(.title3)
                             .foregroundColor(isLoopEnabled ? .purple : .gray)
                     }
                 }
-                .padding(.top, 5)
+                .padding(.top, 2)
 
                 Spacer()
             }
@@ -222,13 +245,44 @@ struct ContentView: View {
                 if selectedFile.startAccessingSecurityScopedResource() {
                     selectedAudioURL = selectedFile
                     selectedSong = nil
-                    player = AVPlayer(url: selectedFile)
-                    player?.play()
-                    isPlaying = true
+                    setupPlayer(url: selectedFile)
                     selectedFile.stopAccessingSecurityScopedResource()
                 }
             } catch {
                 print("Xatolik: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    // Pleyer sozlash va vaqtni kuzatish
+    func setupPlayer(url: URL) {
+        player = AVPlayer(url: url)
+        player?.play()
+        isPlaying = true
+        
+        // Davomiyligini aniqlash
+        let asset = AVAsset(url: url)
+        Task {
+            do {
+                let duration = try await asset.load(.duration)
+                let seconds = CMTimeGetSeconds(duration)
+                await MainActor.run {
+                    self.trackDuration = seconds.isNaN ? 0.0 : seconds
+                }
+            } catch {
+                print("Duration error: \(error)")
+            }
+        }
+
+        // Har soniyada vaqtni yangilab borish
+        if let observer = timeObserverToken {
+            player?.removeTimeObserver(observer)
+        }
+        
+        timeObserverToken = player?.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.5, preferredTimescale: 600), queue: .main) { time in
+            let currentSeconds = CMTimeGetSeconds(time)
+            if !currentSeconds.isNaN {
+                self.playbackProgress = currentSeconds
             }
         }
     }
@@ -254,8 +308,14 @@ struct ContentView: View {
         guard let url = URL(string: song.previewUrl) else { return }
         selectedSong = song
         selectedAudioURL = nil
-        player = AVPlayer(url: url)
-        player?.play()
-        isPlaying = true
+        setupPlayer(url: url)
+    }
+
+    // Sekundlarni daqiqa va soniyaga o'tkazish formatlovchisi
+    func formatTime(seconds: Double) -> String {
+        guard !seconds.isNaN else { return "0:00" }
+        let mins = Int(seconds) / 60
+        let secs = Int(seconds) % 60
+        return String(format: "%d:%02d", mins, secs)
     }
 }
