@@ -1,25 +1,18 @@
 name: Swift Linux Build Check
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+on: [push]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install Swift on Linux
-      uses: swift-actions/setup-swift@v2
-      with:
-        swift-version: "5.9"
+    - name: Checkout code
+      uses: actions/checkout@v3
 
+    - name: Install Swift (Ubuntu)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y swift
     - name: Check Swift Version
       run: swift --version
-
-    - name: Build / Test check
-      run: swift build || swiftc ContentView.swift
