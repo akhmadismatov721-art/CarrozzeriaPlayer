@@ -4,64 +4,91 @@ import AVFoundation
 struct ContentView: View {
     @State private var isPlaying = false
     @State private var isCarrozzeriaOn = false
+    @State private var isCarModeOn = false
 
     var body: some View {
         ZStack {
-            // Yandex Music uslubidagi qora fon
-            Color.black.ignoresSafeArea()
+            LinearGradient(
+                colors: isCarrozzeriaOn ? [.black, .purple.opacity(0.6), .black] : [.black, .gray.opacity(0.3), .black],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
-            VStack(spacing: 25) {
-                // Sarlavha
-                Text("CARROZZERIA PLAYER")
-                    .font(.system(size: 18, weight: .bold))
-                    .tracking(2)
-                    .foregroundColor(.white)
-
-                // Albom muqovasi
-                ZStack {
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(LinearGradient(colors: [.gray.opacity(0.3), .purple.opacity(0.4)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .frame(width: 250, height: 250)
+            VStack(spacing: 20) {
+                HStack {
+                    Text("CARROZZERIA PLAYER")
+                        .font(.system(size: 16, weight: .bold))
+                        .tracking(2)
+                        .foregroundColor(.white)
                     
-                    Image(systemName: "music.note")
-                        .font(.system(size: 80))
-                        .foregroundColor(.white.opacity(0.8))
+                    Spacer()
+                    
+                    Button(action: {
+                        isCarModeOn.toggle()
+                    }) {
+                        Image(systemName: isCarModeOn ? "car.fill" : "car")
+                            .font(.title2)
+                            .foregroundColor(isCarModeOn ? .purple : .white)
+                    }
                 }
-                .shadow(color: .purple.opacity(0.3), radius: 15, x: 0, y: 10)
+                .padding(.horizontal)
 
-                // Qo'shiq ma'lumotlari
+                Spacer()
+
+                ZStack {
+                    RoundedRectangle(cornerRadius: 25)
+                        .fill(LinearGradient(colors: [.purple.opacity(0.5), .blue.opacity(0.3)], startPoint: .top, endPoint: .bottom))
+                        .frame(width: isCarModeOn ? 280 : 220, height: isCarModeOn ? 280 : 220)
+                        .shadow(color: .purple.opacity(0.4), radius: 20, x: 0, y: 10)
+                    
+                    VStack {
+                        Image(systemName: "music.note.list")
+                            .font(.system(size: 60))
+                            .foregroundColor(.white)
+                        
+                        HStack(spacing: 4) {
+                            ForEach(0..<5, id: \.self) { index in
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(Color.white)
+                                    .frame(width: 4, height: isPlaying ? CGFloat.random(in: 15...45) : 10)
+                                    .animation(isPlaying ? .easeInOut(duration: 0.3).repeatForever(autoreverses: true).delay(Double(index) * 0.1) : .default, value: isPlaying)
+                            }
+                        }
+                        .padding(.top, 10)
+                    }
+                }
+
                 VStack(spacing: 5) {
-                    Text("Carrozzeria Sound Track")
+                    Text("Carrozzeria Hi-Fi Mix")
                         .font(.title2)
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
-                    Text("iPhone 13 Pro Max Audio Engine")
+                    Text(isCarModeOn ? "Avtomobil rejimi Faol" : "iPhone 13 Pro Max")
                         .font(.subheadline)
                         .foregroundColor(.gray)
                 }
 
-                // Carrozzeria Effekt Tugmasi
                 Button(action: {
                     isCarrozzeriaOn.toggle()
                 }) {
                     HStack {
                         Image(systemName: isCarrozzeriaOn ? "speaker.wave.3.fill" : "speaker.slash.fill")
-                        Text(isCarrozzeriaOn ? "Carrozzeria: YOQILGAN (Reverb)" : "Carrozzeria: O'CHIRILGAN")
+                        Text(isCarrozzeriaOn ? "Akustika: Carrozzeria YOQILGAN" : "Akustika: Standart")
                             .fontWeight(.medium)
                     }
                     .padding()
                     .frame(maxWidth: .infinity)
                     .background(isCarrozzeriaOn ? Color.purple : Color.gray.opacity(0.3))
                     .foregroundColor(.white)
-                    .cornerRadius(12)
+                    .cornerRadius(14)
                 }
                 .padding(.horizontal, 20)
 
-                // Pleyer Tugmalari
-                HStack(spacing: 40) {
+                HStack(spacing: isCarModeOn ? 50 : 40) {
                     Button(action: {}) {
                         Image(systemName: "backward.fill")
-                            .font(.title)
+                            .font(isCarModeOn ? .largeTitle : .title)
                             .foregroundColor(.white)
                     }
 
@@ -69,13 +96,13 @@ struct ContentView: View {
                         isPlaying.toggle()
                     }) {
                         Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                            .font(.system(size: 64))
+                            .font(.system(size: isCarModeOn ? 80 : 64))
                             .foregroundColor(.white)
                     }
 
                     Button(action: {}) {
                         Image(systemName: "forward.fill")
-                            .font(.title)
+                            .font(isCarModeOn ? .largeTitle : .title)
                             .foregroundColor(.white)
                     }
                 }
