@@ -1,10 +1,14 @@
 import SwiftUI
 import AVFoundation
+import UniformTypeIdentifiers
 
 struct ContentView: View {
     @State private var isPlaying = false
     @State private var isCarrozzeriaOn = false
     @State private var isCarModeOn = false
+    @State private var isImporterPresented = false
+    @State private var selectedAudioURL: URL?
+    @State private var player: AVPlayer?
 
     var body: some View {
         ZStack {
@@ -23,6 +27,15 @@ struct ContentView: View {
                         .foregroundColor(.white)
                     
                     Spacer()
+                    
+                    // Telefon xotirasidan musiqa tanlash tugmasi
+                    Button(action: {
+                        isImporterPresented.toggle()
+                    }) {
+                        Image(systemName: "folder.badge.plus")
+                            .font(.title2)
+                            .foregroundColor(.white)
+                    }
                     
                     Button(action: {
                         isCarModeOn.toggle()
@@ -60,11 +73,12 @@ struct ContentView: View {
                 }
 
                 VStack(spacing: 5) {
-                    Text("Carrozzeria Hi-Fi Mix")
+                    Text(selectedAudioURL?.lastPathComponent ?? "Carrozzeria Hi-Fi Mix")
                         .font(.title2)
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
-                    Text(isCarModeOn ? "Avtomobil rejimi Faol" : "iPhone 13 Pro Max")
+                        .lineLimit(1)
+                    Text(isCarModeOn ? "Avtomobil rejimi Faol" : "iPhone xotirasidan")
                         .font(.subheadline)
                         .foregroundColor(.gray)
                 }
@@ -92,8 +106,16 @@ struct ContentView: View {
                             .foregroundColor(.white)
                     }
 
+                    // Play / Pause tugmasi
                     Button(action: {
                         isPlaying.toggle()
+                        if let player = player {
+                            if isPlaying {
+                                player.play()
+                            } else {
+                                player.pause()
+                            }
+                        }
                     }) {
                         Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
                             .font(.system(size: isCarModeOn ? 80 : 64))
@@ -112,11 +134,26 @@ struct ContentView: View {
             }
             .padding()
         }
-    }
-}
-
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
+        // Fayl tanlash oynasini chaqiruvchi modifier
+        .fileImporter(
+            isPresented: $isImporterPresented,
+            allowedContentTypes: [.audio],
+            allowsMultipleSelection: false
+        ) { result in
+            do {
+                guard let selectedFile = try result.get().first else { return }
+                
+                // Xavfsiz fayl manzilini olish
+                if selectedFile.startAccessingSecurityScopedResource() {
+                    selectedAudioURL = selectedFile
+                    player = AVPlayer(url: selectedFile)
+                    player?.play()
+                    isPlaying = true
+                    selectedFile.stopAccessingSecurityScopedResource()
+                }
+            } catch {
+                print("Musiqa ochishda xatolik: \(error.localizedDescription)")
+            }
+        }
     }
 }
