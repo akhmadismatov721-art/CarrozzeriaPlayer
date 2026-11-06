@@ -4,21 +4,20 @@ import AVFoundation
 struct ContentView: View {
     @State private var isPlaying = false
     @State private var isCarrozzeriaOn = false
-    @State private var volume: Double = 0.7
 
     var body: some View {
         ZStack {
-            // To'q qora / Yandex Music uslubidagi fon
+            // Yandex Music uslubidagi qora fon
             Color.black.ignoresSafeArea()
 
-            VBoxLayout(spacing: 25) {
+            VStack(spacing: 25) {
                 // Sarlavha
                 Text("CARROZZERIA PLAYER")
-                .font(.system(size: 18, weight: .bold))
-                .tracking(2)
-                .foregroundColor(.white)
+                    .font(.system(size: 18, weight: .bold))
+                    .tracking(2)
+                    .foregroundColor(.white)
 
-                // Albom muqovasi (Simulyatsiya)
+                // Albom muqovasi
                 ZStack {
                     RoundedRectangle(cornerRadius: 20)
                         .fill(LinearGradient(colors: [.gray.opacity(0.3), .purple.opacity(0.4)], startPoint: .topLeading, endPoint: .bottomTrailing))
@@ -30,24 +29,24 @@ struct ContentView: View {
                 }
                 .shadow(color: .purple.opacity(0.3), radius: 15, x: 0, y: 10)
 
-                // Track nomi
+                // Qo'shiq ma'lumotlari
                 VStack(spacing: 5) {
-                    Text("Konsert Zali Trangi")
+                    Text("Carrozzeria Sound Track")
                         .font(.title2)
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
-                    Text("iPhone 13 Pro Max Audio")
+                    Text("iPhone 13 Pro Max Audio Engine")
                         .font(.subheadline)
                         .foregroundColor(.gray)
                 }
 
-                // Carrozzeria Reverb tugmasi
+                // Carrozzeria Effekt Tugmasi
                 Button(action: {
                     isCarrozzeriaOn.toggle()
                 }) {
                     HStack {
                         Image(systemName: isCarrozzeriaOn ? "speaker.wave.3.fill" : "speaker.slash.fill")
-                        Text(isCarrozzeriaOn ? "Carrozzeria: YOQILGAN (Reverb Active)" : "Carrozzeria: O'CHIRILGAN")
+                        Text(isCarrozzeriaOn ? "Carrozzeria: YOQILGAN (Reverb)" : "Carrozzeria: O'CHIRILGAN")
                             .fontWeight(.medium)
                     }
                     .padding()
@@ -58,7 +57,7 @@ struct ContentView: View {
                 }
                 .padding(.horizontal, 20)
 
-                // Boshqaruv tugmalari (Play/Pause)
+                // Pleyer Tugmalari
                 HStack(spacing: 40) {
                     Button(action: {}) {
                         Image(systemName: "backward.fill")
