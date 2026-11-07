@@ -13,15 +13,23 @@ jobs:
       - name: Repositoriy ko'chirilmoqda
         uses: actions/checkout@v4
 
-      - name: Kod kompilyatsiya qilinmoqda va Payload yaratilmoqda
+      - name: Xcode versiyasi sozlanmoqda
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: 'latest-stable'
+
+      - name: Swift kodini yig'ish va Payload yaratish
         run: |
           mkdir -p Payload
-          swiftc CarrozzeriaApp.swift ContentView.swift \
-            -target arm64-apple-ios15.0 \
-            -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
-            -emit-executable \
-            -o Payload/Carrozzeria
           
+          # Swift fayllarini arm64 iOS uchun kompilyatsiya qilish
+          swiftc -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
+                 -target arm64-apple-ios15.0 \
+                 -emit-executable \
+                 CarrozzeriaApp.swift ContentView.swift \
+                 -o Payload/Carrozzeria
+
+          # Info.plist faylini yaratish
           cat <<EOF > Payload/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -45,12 +53,13 @@ jobs:
           </plist>
           EOF
 
+          # IPA paketini shakllantirish
           mkdir -p AppPayload/Payload
           mv Payload AppPayload/Payload/Carrozzeria.app
           cd AppPayload
           zip -r ../Carrozzeria.ipa Payload
 
-      - name: IPA faylini Artifacts ga yuklash
+      - name: IPA faylini yuklash
         uses: actions/upload-artifact@v4
         with:
           name: Carrozzeria-Unsigned-IPA
