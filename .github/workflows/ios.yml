@@ -7,30 +7,43 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-13
 
     steps:
       - name: Repositoriy ko'chirilmoqda
         uses: actions/checkout@v4
 
-      - name: Xcode versiyasi sozlanmoqda
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: 'latest-stable'
-
-      - name: Swift kodini yig'ish va Payload yaratish
+      - name: Xcode loyihasini yaratish va build qilish
         run: |
-          mkdir -p Payload
-          
-          # Swift fayllarini arm64 iOS uchun kompilyatsiya qilish
-          swiftc -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
-                 -target arm64-apple-ios15.0 \
-                 -emit-executable \
-                 CarrozzeriaApp.swift ContentView.swift \
-                 -o Payload/Carrozzeria
+          # Swift fayllari uchun minimal Xcode loyiha strukturasini tuzish
+          mkdir -p CarrozzeriaApp.xcodeproj
+          cat <<EOF > CarrozzeriaApp.xcodeproj/project.pbxproj
+          // !$*UTF8*$!
+          {
+            archiveVersion = 1;
+            classes = {};
+            objectVersion = 54;
+            objects = {
+              1 = {isa = PBXBuildFile; fileRef = 2;};
+              2 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>";};
+              3 = {isa = PBXBuildFile; fileRef = 4;};
+              4 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarrozzeriaApp.swift; sourceTree = "<group>";};
+              5 = {isa = PBXFileItem;};
+              6 = {children = (2, 4); isa = PBXGroup; sourceTree = "<group>";};
+              7 = {isa = PBXGroup; children = (6); sourceTree = "<group>";};
+              8 = {buildActionMask = 2147483647; files = (1, 3); isa = PBXSourcesBuildPhase; runOnlyForDeploymentPostprocessing = 0;};
+              9 = {buildConfigurationList = 12; buildPhases = (8); buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; INFOPLIST_FILE = Info.plist; PRODUCT_BUNDLE_IDENTIFIER = com.user.carrozzeria; PRODUCT_NAME = Carrozzeria; SDKROOT = iphoneos; TARGETED_DEVICE_FAMILY = "1,2"; iPhoneOSDeploymentTarget = 15.0;}; isa = PBXNativeTarget; name = Carrozzeria; productType = "com.apple.product-type.application";};
+              10 = {isa = PBXAggregateTarget; name = Carrozzeria; buildConfigurationList = 12;};
+              11 = {isa = PBXProject; attributes = {LastUpgradeCheck = 1300;}; buildConfigurationList = 12; compatibilityVersion = "Xcode 13.0"; developmentRegion = en; mainGroup = 7; targets = (9);};
+              12 = {buildConfigurations = (13); isa = XCConfigurationList; defaultConfigurationName = Release;};
+              13 = {buildSettings = {CODE_SIGNING_ALLOWED = NO; CODE_SIGN_IDENTITY = ""; CODE_SIGNING_REQUIRED = NO; SDKROOT = iphoneos;}; isa = XCBuildConfiguration; name = Release;};
+            };
+            rootObject = 11;
+          }
+          EOF
 
-          # Info.plist faylini yaratish
-          cat <<EOF > Payload/Info.plist
+          # Info.plist yaratish
+          cat <<EOF > Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -53,13 +66,22 @@ jobs:
           </plist>
           EOF
 
-          # IPA paketini shakllantirish
-          mkdir -p AppPayload/Payload
-          mv Payload AppPayload/Payload/Carrozzeria.app
-          cd AppPayload
-          zip -r ../Carrozzeria.ipa Payload
+          # xcodebuild yordamida yig'ish
+          xcodebuild -project CarrozzeriaApp.xcodeproj \
+                     -target Carrozzeria \
+                     -sdk iphoneos \
+                     -configuration Release \
+                     CODE_SIGN_IDENTITY="" \
+                     CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGNING_ALLOWED=NO \
+                     build
 
-      - name: IPA faylini yuklash
+          # IPA formatiga o'tkazish
+          mkdir -p Payload
+          cp -r build/Release-iphoneos/Carrozzeria.app Payload/
+          zip -r Carrozzeria.ipa Payload
+
+      - name: IPA faylini saqlash
         uses: actions/upload-artifact@v4
         with:
           name: Carrozzeria-Unsigned-IPA
