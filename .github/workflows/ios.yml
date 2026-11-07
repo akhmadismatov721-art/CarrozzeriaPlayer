@@ -1,18 +1,66 @@
-name: Swift Linux Build Check
+name: Build Unsigned iOS IPA
 
-on: [push]
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: macos-14
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Repositoriy ko'chirilmoqda
+        uses: actions/checkout@v4
 
-    - name: Install Swift (Ubuntu)
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y swift
-    - name: Check Swift Version
-      run: swift --version
+      - name: Xcode versiyasi sozlanmoqda
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '15.4'
+
+      - name: Kod kompilyatsiya qilinmoqda va Payload yaratilmoqda
+        run: |
+          mkdir -p Payload
+          
+          # Swift fayllarini iOS executable sifatida yig'ish
+          swiftc CarrozzeriaApp.swift ContentView.swift \
+            -target arm64-apple-ios15.0 \
+            -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
+            -emit-executable \
+            -o Payload/Carrozzeria
+          
+          # Info.plist faylini yaratish
+          cat <<EOF > Payload/Info.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleExecutable</key>
+              <string>Carrozzeria</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.user.carrozzeria</string>
+              <key>CFBundleName</key>
+              <string>Carrozzeria</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleShortVersionString</key>
+              <string>1.0</string>
+              <key>CFBundleVersion</key>
+              <string>1</string>
+              <key>MinimumOSVersion</key>
+              <string>15.0</string>
+          </dict>
+          </plist>
+          EOF
+
+          # Payload papkasini .app qilib nomlash va .ipa arxivi shakliga keltirish
+          mkdir -p AppPayload/Payload
+          mv Payload AppPayload/Payload/Carrozzeria.app
+          cd AppPayload
+          zip -r ../Carrozzeria.ipa Payload
+
+      - name: IPA faylini Artifacts ga yuklash
+        uses: actions/upload-artifact@v4
+        with:
+          name: Carrozzeria-Unsigned-IPA
+          path: Carrozzeria.ipa
